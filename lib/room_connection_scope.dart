@@ -5,7 +5,11 @@ import 'package:flutter/widgets.dart';
 
 class RoomConnectionScope extends StatefulWidget {
   const RoomConnectionScope(
-      {super.key, required this.uri, required this.builder, required this.jwt, this.doneBuilder });
+      {super.key,
+      required this.uri,
+      required this.builder,
+      required this.jwt,
+      this.doneBuilder});
 
   final Uri uri;
   final String jwt;
@@ -18,7 +22,6 @@ class RoomConnectionScope extends StatefulWidget {
 }
 
 class _RoomConnectionScopeState extends State<RoomConnectionScope> {
-  
   late final RoomClient client;
 
   @override
@@ -36,20 +39,18 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   Object? error;
 
   void onDone() {
-    if(!mounted) return;
+    if (!mounted) return;
     setState(() {
       done = true;
     });
   }
 
   void onError(Object? error) {
-
-    if(!mounted) return;
+    if (!mounted) return;
     setState(() {
-        done = true;
-        error = error;      
+      done = true;
+      error = error;
     });
-
   }
 
   @override
@@ -60,11 +61,11 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
   @override
   Widget build(BuildContext context) {
-    if(!done) {
+    if (!done) {
       return widget.builder(context, client);
     } else {
-      if(widget.doneBuilder == null) {
-        if(error != null) {
+      if (widget.doneBuilder == null) {
+        if (error != null) {
           return Text("Room Disconnected: $error");
         } else {
           return Text("Room Closed");
