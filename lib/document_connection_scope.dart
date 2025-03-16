@@ -4,11 +4,11 @@ import 'package:flutter/widgets.dart';
 class DocumentConnectionScope extends StatefulWidget {
   const DocumentConnectionScope(
       {super.key,
-      required this.client,
+      required this.room,
       required this.path,
       required this.builder});
 
-  final RoomClient client;
+  final RoomClient room;
   final String path;
 
   final Widget Function(
@@ -30,7 +30,7 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
   void initState() {
     super.initState();
 
-    widget.client.sync.open(widget.path).then((doc) {
+    widget.room.sync.open(widget.path).then((doc) {
       if (mounted) {
         setState(() {
           document = doc;
@@ -48,7 +48,7 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
   @override
   void dispose() {
     super.dispose();
-    widget.client.sync.close(widget.path);
+    widget.room.sync.close(widget.path);
   }
 
   @override
