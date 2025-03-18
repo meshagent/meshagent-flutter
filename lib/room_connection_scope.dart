@@ -4,12 +4,7 @@ import 'package:meshagent/room_server_client.dart';
 import 'package:flutter/widgets.dart';
 
 class RoomConnectionScope extends StatefulWidget {
-  const RoomConnectionScope(
-      {super.key,
-      required this.uri,
-      required this.builder,
-      required this.jwt,
-      this.doneBuilder});
+  const RoomConnectionScope({super.key, required this.uri, required this.builder, required this.jwt, this.doneBuilder});
 
   final Uri uri;
   final String jwt;
@@ -28,10 +23,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   void initState() {
     super.initState();
 
-    client = RoomClient(
-      protocol: Protocol(
-          channel: WebSocketProtocolChannel(url: widget.uri, jwt: widget.jwt)),
-    );
+    client = RoomClient(protocol: Protocol(channel: WebSocketProtocolChannel(url: widget.uri, jwt: widget.jwt)));
     client.start(onDone: onDone, onError: onError);
   }
 
