@@ -3,7 +3,6 @@ import 'package:meshagent/participant_token.dart';
 import 'package:meshagent/protocol.dart';
 
 import 'package:meshagent/room_server_client.dart';
-import 'package:flutter/widgets.dart';
 
 class RoomConnectionInfo {
   RoomConnectionInfo({required this.url, required this.jwt});
