@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:meshagent/participant_token.dart';
 import 'package:meshagent/protocol.dart';
 
@@ -125,7 +126,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
         if (widget.authorizingBuilder != null) {
           return widget.authorizingBuilder!(context);
         } else {
-          return Container();
+          return Center(child: CircularProgressIndicator());
         }
       }
       return widget.builder(context, client!);
