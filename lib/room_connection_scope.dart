@@ -78,6 +78,12 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
     final cli = RoomClient(protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.url, jwt: connection!.jwt)));
 
+    if (mounted) {
+      setState(() {
+        client = cli;
+      });
+    }
+
     await cli.start(onDone: onDone, onError: onError);
 
     if (widget.enableMessaging) {
@@ -85,12 +91,6 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
     }
 
     widget.onReady?.call(cli);
-
-    if (mounted) {
-      setState(() {
-        client = cli;
-      });
-    }
   }
 
   void onDone() {
