@@ -36,9 +36,20 @@ Future<RoomConnectionInfo> Function() staticAuthorization({required Uri url, req
 }
 
 class RoomConnectionScope extends StatefulWidget {
-  const RoomConnectionScope({super.key, required this.authorization, required this.builder, this.doneBuilder, this.authorizingBuilder});
+  const RoomConnectionScope({
+    super.key,
+    required this.authorization,
+    required this.builder,
+    this.doneBuilder,
+    this.authorizingBuilder,
+    this.onReady,
+    this.enableMessaging = true,
+  });
+
+  final bool enableMessaging;
 
   final Future<RoomConnectionInfo> Function() authorization;
+  final void Function(RoomClient client)? onReady;
 
   final Widget Function(BuildContext context)? authorizingBuilder;
   final Widget Function(BuildContext context, RoomClient client) builder;
@@ -50,47 +61,60 @@ class RoomConnectionScope extends StatefulWidget {
 
 class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   RoomClient? client;
-
-  @override
-  void initState() {
-    super.initState();
-    connect();
-  }
-
   RoomConnectionInfo? connection;
-
-  void connect() async {
-    connection = await widget.authorization();
-
-    if (mounted) {
-      setState(() {
-        client = RoomClient(protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.url, jwt: connection!.jwt)));
-        client!.start(onDone: onDone, onError: onError);
-      });
-    }
-  }
 
   bool done = false;
   Object? error;
 
+  @override
+  void initState() {
+    super.initState();
+
+    connect();
+  }
+
+  Future<void> connect() async {
+    connection = await widget.authorization();
+
+    final cli = RoomClient(protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.url, jwt: connection!.jwt)));
+
+    await cli.start(onDone: onDone, onError: onError);
+
+    if (widget.enableMessaging) {
+      await cli.messaging.enable();
+    }
+
+    widget.onReady?.call(cli);
+
+    if (mounted) {
+      setState(() {
+        client = cli;
+      });
+    }
+  }
+
   void onDone() {
-    if (!mounted) return;
-    setState(() {
-      done = true;
-    });
+    if (mounted && !done) {
+      setState(() {
+        done = true;
+      });
+    }
   }
 
   void onError(Object? error) {
-    if (!mounted) return;
-    setState(() {
-      done = true;
-      error = error;
-    });
+    if (mounted && !done) {
+      setState(() {
+        done = true;
+        error = error;
+      });
+    }
   }
 
   @override
   void dispose() {
     super.dispose();
+
+    done = true;
     client?.dispose();
   }
 
