@@ -3,13 +3,7 @@ import 'package:meshagent/room_server_client.dart';
 import 'package:flutter/widgets.dart';
 
 class ClientToolkits extends StatefulWidget {
-  const ClientToolkits({
-    super.key,
-    required this.room,
-    required this.toolkits,
-    this.public = false,
-    required this.child,
-  });
+  const ClientToolkits({super.key, required this.room, required this.toolkits, this.public = false, required this.child});
 
   final RoomClient room;
   final bool public;

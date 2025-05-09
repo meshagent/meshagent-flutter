@@ -21,11 +21,7 @@ Future<RoomConnectionInfo> Function() developmentAuthorization({
   required String secret,
 }) {
   return () async {
-    final token = ParticipantToken(
-      name: participantName,
-      projectId: projectId,
-      apiKeyId: apiKeyId,
-    );
+    final token = ParticipantToken(name: participantName, projectId: projectId, apiKeyId: apiKeyId);
     token.addRoomGrant(roomName);
     token.addRoleGrant("user");
 
@@ -33,10 +29,7 @@ Future<RoomConnectionInfo> Function() developmentAuthorization({
   };
 }
 
-Future<RoomConnectionInfo> Function() staticAuthorization({
-  required Uri url,
-  required String jwt,
-}) {
+Future<RoomConnectionInfo> Function() staticAuthorization({required Uri url, required String jwt}) {
   return () async {
     return RoomConnectionInfo(url: url, jwt: jwt);
   };
@@ -85,14 +78,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   Future<void> connect() async {
     connection = await widget.authorization();
 
-    final cli = RoomClient(
-      protocol: Protocol(
-        channel: WebSocketProtocolChannel(
-          url: connection!.url,
-          jwt: connection!.jwt,
-        ),
-      ),
-    );
+    final cli = RoomClient(protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.url, jwt: connection!.jwt)));
 
     if (mounted) {
       setState(() {
