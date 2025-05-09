@@ -21,7 +21,11 @@ Future<RoomConnectionInfo> Function() developmentAuthorization({
   required String secret,
 }) {
   return () async {
-    final token = ParticipantToken(name: participantName, projectId: projectId, apiKeyId: apiKeyId);
+    final token = ParticipantToken(
+      name: participantName,
+      projectId: projectId,
+      apiKeyId: apiKeyId,
+    );
     token.addRoomGrant(roomName);
     token.addRoleGrant("user");
 
@@ -29,7 +33,10 @@ Future<RoomConnectionInfo> Function() developmentAuthorization({
   };
 }
 
-Future<RoomConnectionInfo> Function() staticAuthorization({required Uri url, required String jwt}) {
+Future<RoomConnectionInfo> Function() staticAuthorization({
+  required Uri url,
+  required String jwt,
+}) {
   return () async {
     return RoomConnectionInfo(url: url, jwt: jwt);
   };
@@ -42,6 +49,7 @@ class RoomConnectionScope extends StatefulWidget {
     required this.builder,
     this.doneBuilder,
     this.authorizingBuilder,
+    this.connectingBuilder,
     this.onReady,
     this.enableMessaging = true,
   });
@@ -49,10 +57,11 @@ class RoomConnectionScope extends StatefulWidget {
   final bool enableMessaging;
 
   final Future<RoomConnectionInfo> Function() authorization;
-  final void Function(RoomClient client)? onReady;
+  final void Function(RoomClient room)? onReady;
 
   final Widget Function(BuildContext context)? authorizingBuilder;
-  final Widget Function(BuildContext context, RoomClient client) builder;
+  final Widget Function(BuildContext context)? connectingBuilder;
+  final Widget Function(BuildContext context, RoomClient room) builder;
   final Widget Function(BuildContext context, Object? error)? doneBuilder;
 
   @override
@@ -76,7 +85,14 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   Future<void> connect() async {
     connection = await widget.authorization();
 
-    final cli = RoomClient(protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.url, jwt: connection!.jwt)));
+    final cli = RoomClient(
+      protocol: Protocol(
+        channel: WebSocketProtocolChannel(
+          url: connection!.url,
+          jwt: connection!.jwt,
+        ),
+      ),
+    );
 
     if (mounted) {
       setState(() {
@@ -127,8 +143,22 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
         } else {
           return Center(child: CircularProgressIndicator());
         }
+      } else {
+        return FutureBuilder(
+          future: client!.ready,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return widget.builder(context, client!);
+            } else {
+              if (widget.connectingBuilder == null) {
+                return Center(child: CircularProgressIndicator());
+              } else {
+                return widget.connectingBuilder!(context);
+              }
+            }
+          },
+        );
       }
-      return widget.builder(context, client!);
     } else {
       if (widget.doneBuilder == null) {
         if (error != null) {
