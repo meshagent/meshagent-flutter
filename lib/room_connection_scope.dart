@@ -127,7 +127,10 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
         if (widget.authorizingBuilder != null) {
           return widget.authorizingBuilder!(context);
         } else {
-          return Center(child: CircularProgressIndicator());
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Initializing...")],
+          );
         }
       } else {
         return FutureBuilder(
@@ -137,7 +140,10 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
               return widget.builder(context, client!);
             } else {
               if (widget.connectingBuilder == null) {
-                return Center(child: CircularProgressIndicator());
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Connecting to room...")],
+                );
               } else {
                 return widget.connectingBuilder!(context);
               }
