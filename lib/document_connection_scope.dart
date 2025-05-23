@@ -41,7 +41,6 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
           await Future.delayed(const Duration(milliseconds: 800));
 
           return syncDocument();
-
         } else {
           setState(() {
             error = e;
