@@ -1,8 +1,6 @@
 import 'package:meshagent/room_server_client.dart';
 import 'package:flutter/widgets.dart';
 
-const int maxRetries = 3;
-
 class DocumentConnectionScope extends StatefulWidget {
   const DocumentConnectionScope({super.key, required this.room, required this.path, required this.builder});
 
@@ -17,15 +15,35 @@ class DocumentConnectionScope extends StatefulWidget {
 
 class _DocumentConnectionScope extends State<DocumentConnectionScope> {
   bool connected = false;
-  int tries = 0;
 
   late final RoomClient client;
   MeshDocument? document;
 
   Object? error;
 
+  /*
+   * Waits for the schema file to be available in the storage. Schema file MUST be present
+   */
+  Future<void> waitForSchemaFile() async {
+    final ext = widget.path.split(".").last.toLowerCase();
+
+    final schemaFile = '/.schemas/$ext.json';
+
+    bool schemaExists = await widget.room.storage.exists(schemaFile);
+
+    while (!schemaExists) {
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      debugPrint('Waiting for schema file: $schemaFile');
+
+      schemaExists = await widget.room.storage.exists(schemaFile);
+    }
+  }
+
   Future<void> syncDocument() async {
     try {
+      await waitForSchemaFile();
+
       final doc = await widget.room.sync.open(widget.path);
 
       if (mounted) {
@@ -35,17 +53,9 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
       }
     } catch (e) {
       if (mounted) {
-        if (tries < maxRetries) {
-          tries++;
-
-          await Future.delayed(const Duration(milliseconds: 800));
-
-          return syncDocument();
-        } else {
-          setState(() {
-            error = e;
-          });
-        }
+        setState(() {
+          error = e;
+        });
       }
     }
   }
@@ -54,7 +64,6 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
   void initState() {
     super.initState();
 
-    tries = 0;
     syncDocument();
   }
 
