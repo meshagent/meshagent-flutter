@@ -21,31 +21,56 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
 
   Object? error;
 
+  /*
+   * Waits for the schema file to be available in the storage. Schema file MUST be present
+   */
+  Future<void> waitForSchemaFile() async {
+    final ext = widget.path.split(".").last.toLowerCase();
+
+    final schemaFile = '/.schemas/$ext.json';
+
+    bool schemaExists = await widget.room.storage.exists(schemaFile);
+
+    while (!schemaExists) {
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      debugPrint('Waiting for schema file: $schemaFile');
+
+      schemaExists = await widget.room.storage.exists(schemaFile);
+    }
+  }
+
+  Future<void> syncDocument() async {
+    try {
+      await waitForSchemaFile();
+
+      final doc = await widget.room.sync.open(widget.path);
+
+      if (mounted) {
+        setState(() {
+          document = doc;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          error = e;
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
 
-    widget.room.sync
-        .open(widget.path)
-        .then((doc) {
-          if (mounted) {
-            setState(() {
-              document = doc;
-            });
-          }
-        })
-        .catchError((err) {
-          if (mounted) {
-            setState(() {
-              error = err;
-            });
-          }
-        });
+    syncDocument();
   }
 
   @override
   void dispose() {
     super.dispose();
+
     widget.room.sync.close(widget.path);
   }
 
