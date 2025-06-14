@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:meshagent/room_server_client.dart';
 import 'package:flutter/widgets.dart';
 
@@ -15,10 +16,10 @@ class DocumentConnectionScope extends StatefulWidget {
 
 class _DocumentConnectionScope extends State<DocumentConnectionScope> {
   bool connected = false;
+  int retryCount = 0;
 
   late final RoomClient client;
   MeshDocument? document;
-
   Object? error;
 
   /*
@@ -42,8 +43,6 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
 
   Future<void> syncDocument() async {
     try {
-      await waitForSchemaFile();
-
       final doc = await widget.room.sync.open(widget.path);
 
       if (mounted) {
@@ -52,10 +51,15 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
         });
       }
     } catch (e) {
+      debugPrint('Retrying to open document: ${widget.path}');
+
+      final delay = min(60000, pow(2, retryCount).toInt() * 500);
+      retryCount++;
+
+      await Future.delayed(Duration(milliseconds: delay));
+
       if (mounted) {
-        setState(() {
-          error = e;
-        });
+        syncDocument();
       }
     }
   }
