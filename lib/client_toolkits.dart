@@ -30,6 +30,7 @@ class _ClientToolkitsState extends State<ClientToolkits> {
     for (final toolkit in widget.toolkits) {
       toolkit.stop();
     }
+
     super.dispose();
   }
 

@@ -24,7 +24,6 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
 
   /*
    * Waits for the schema file to be available in the storage. Schema file MUST be present
-   */
   Future<void> waitForSchemaFile() async {
     final ext = widget.path.split(".").last.toLowerCase();
 
@@ -40,6 +39,7 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
       schemaExists = await widget.room.storage.exists(schemaFile);
     }
   }
+  */
 
   Future<void> syncDocument() async {
     try {
