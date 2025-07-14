@@ -53,7 +53,7 @@ class RoomConnectionScope extends StatefulWidget {
   final void Function(RoomClient room)? onReady;
 
   final Widget Function(BuildContext context)? authorizingBuilder;
-  final Widget Function(BuildContext context)? connectingBuilder;
+  final Widget Function(BuildContext context, RoomClient room)? connectingBuilder;
   final Widget Function(BuildContext context, RoomClient room) builder;
   final Widget Function(BuildContext context, Object? error)? doneBuilder;
 
@@ -145,7 +145,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
                   children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Connecting to room...")],
                 );
               } else {
-                return widget.connectingBuilder!(context);
+                return widget.connectingBuilder!(context, client!);
               }
             }
           },
