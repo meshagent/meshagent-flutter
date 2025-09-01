@@ -2,14 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:meshagent/participant_token.dart';
 import 'package:meshagent/protocol.dart';
 
+import 'package:meshagent/accounts_client.dart';
 import 'package:meshagent/room_server_client.dart';
-
-class RoomConnectionInfo {
-  RoomConnectionInfo({required this.url, required this.jwt});
-
-  Uri url;
-  String jwt;
-}
 
 Future<RoomConnectionInfo> Function() developmentAuthorization({
   required Uri url,
@@ -25,13 +19,18 @@ Future<RoomConnectionInfo> Function() developmentAuthorization({
     token.addRoomGrant(roomName);
     token.addRoleGrant("user");
 
-    return RoomConnectionInfo(url: url, jwt: token.toJwt(token: secret));
+    return RoomConnectionInfo(projectId: projectId, roomName: roomName, roomUrl: url, jwt: token.toJwt(token: secret));
   };
 }
 
-Future<RoomConnectionInfo> Function() staticAuthorization({required Uri url, required String jwt}) {
+Future<RoomConnectionInfo> Function() staticAuthorization({
+  required String projectId,
+  required String roomName,
+  required Uri url,
+  required String jwt,
+}) {
   return () async {
-    return RoomConnectionInfo(url: url, jwt: jwt);
+    return RoomConnectionInfo(projectId: projectId, roomName: roomName, roomUrl: url, jwt: jwt);
   };
 }
 
@@ -81,7 +80,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
     connection = await widget.authorization();
 
     final cli = RoomClient(
-      protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.url, jwt: connection!.jwt)),
+      protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.roomUrl, jwt: connection!.jwt)),
       oauthTokenRequestHandler:
           widget.oauthTokenRequestHandler == null ? null : (request) => widget.oauthTokenRequestHandler!(client!, request),
     );
