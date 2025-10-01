@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:meshagent/participant_token.dart';
 import 'package:meshagent/protocol.dart';
 
-import 'package:meshagent/accounts_client.dart';
+import 'package:meshagent/client.dart';
 import 'package:meshagent/room_server_client.dart';
 
 Future<RoomConnectionInfo> Function() developmentAuthorization({
