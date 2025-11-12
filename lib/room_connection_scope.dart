@@ -45,7 +45,10 @@ class RoomConnectionScope extends StatefulWidget {
     this.onReady,
     this.enableMessaging = true,
     this.oauthTokenRequestHandler,
+    this.client,
   });
+
+  final String? client;
 
   final bool enableMessaging;
   final Function(RoomClient, OAuthTokenRequest)? oauthTokenRequestHandler;
