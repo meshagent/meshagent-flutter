@@ -19,7 +19,12 @@ Future<RoomConnectionInfo> Function() developmentAuthorization({
     token.addRoomGrant(roomName);
     token.addRoleGrant("user");
 
-    return RoomConnectionInfo(projectId: projectId, roomName: roomName, roomUrl: url, jwt: token.toJwt(token: secret));
+    return RoomConnectionInfo(
+      projectId: projectId,
+      roomName: roomName,
+      roomUrl: url,
+      jwt: token.toJwt(token: secret),
+    );
   };
 }
 
@@ -83,9 +88,12 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
     connection = await widget.authorization();
 
     final cli = RoomClient(
-      protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.roomUrl, jwt: connection!.jwt)),
-      oauthTokenRequestHandler:
-          widget.oauthTokenRequestHandler == null ? null : (request) => widget.oauthTokenRequestHandler!(client!, request),
+      protocol: Protocol(
+        channel: WebSocketProtocolChannel(url: connection!.roomUrl, jwt: connection!.jwt),
+      ),
+      oauthTokenRequestHandler: widget.oauthTokenRequestHandler == null
+          ? null
+          : (request) => widget.oauthTokenRequestHandler!(client!, request),
     );
 
     if (mounted) {
