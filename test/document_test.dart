@@ -1,10 +1,9 @@
 import 'package:meshagent/room_server_client.dart';
-import 'package:meshagent/runtime.dart';
 import 'package:test/test.dart';
 
 import 'package:meshagent/schema.dart';
 import 'package:meshagent/document.dart';
-import '../lib/runtime.dart';
+import 'package:meshagent_flutter/runtime.dart';
 
 final MeshSchema testSchema = MeshSchema(
   rootTagName: "root",
