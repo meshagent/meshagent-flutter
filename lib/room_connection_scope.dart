@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:meshagent/participant_token.dart';
-import 'package:meshagent/protocol.dart';
-
-import 'package:meshagent/client.dart';
-import 'package:meshagent/room_server_client.dart';
+import 'package:meshagent_flutter/meshagent_flutter.dart';
+import 'package:meshagent/meshagent.dart';
+import 'package:meshagent/runtime.dart';
 
 Future<RoomConnectionInfo> Function() developmentAuthorization({
   required Uri url,
@@ -82,8 +80,10 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
   @override
   void initState() {
+    if (DocumentRuntime.instance == null) {
+      initializeFlutterDocumenRuntime();
+    }
     super.initState();
-
     connect();
   }
 
