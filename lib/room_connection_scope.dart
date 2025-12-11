@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:meshagent/participant_token.dart';
-import 'package:meshagent/protocol.dart';
-
-import 'package:meshagent/client.dart';
-import 'package:meshagent/room_server_client.dart';
+import 'package:meshagent_flutter/meshagent_flutter.dart';
+import 'package:meshagent/meshagent.dart';
+import 'package:meshagent/runtime.dart';
 
 Future<RoomConnectionInfo> Function() developmentAuthorization({
   required Uri url,
@@ -19,7 +17,12 @@ Future<RoomConnectionInfo> Function() developmentAuthorization({
     token.addRoomGrant(roomName);
     token.addRoleGrant("user");
 
-    return RoomConnectionInfo(projectId: projectId, roomName: roomName, roomUrl: url, jwt: token.toJwt(token: secret));
+    return RoomConnectionInfo(
+      projectId: projectId,
+      roomName: roomName,
+      roomUrl: url,
+      jwt: token.toJwt(token: secret),
+    );
   };
 }
 
@@ -41,6 +44,7 @@ class RoomConnectionScope extends StatefulWidget {
     required this.builder,
     this.doneBuilder,
     this.authorizingBuilder,
+    this.notFoundBuilder,
     this.connectingBuilder,
     this.onReady,
     this.enableMessaging = true,
@@ -57,6 +61,7 @@ class RoomConnectionScope extends StatefulWidget {
   final void Function(RoomClient room)? onReady;
 
   final Widget Function(BuildContext context)? authorizingBuilder;
+  final Widget Function(BuildContext context)? notFoundBuilder;
   final Widget Function(BuildContext context, RoomClient room)? connectingBuilder;
   final Widget Function(BuildContext context, RoomClient room) builder;
   final Widget Function(BuildContext context, Object? error)? doneBuilder;
@@ -70,22 +75,46 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   RoomConnectionInfo? connection;
 
   bool done = false;
+  bool notFound = false;
   Object? error;
 
   @override
   void initState() {
+    if (DocumentRuntime.instance == null) {
+      initializeFlutterDocumenRuntime();
+    }
     super.initState();
-
     connect();
   }
 
   Future<void> connect() async {
-    connection = await widget.authorization();
+    try {
+      connection = await widget.authorization();
+    } catch (e) {
+      if (mounted) {
+        if (e is NotFoundException) {
+          setState(() {
+            notFound = true;
+            error = e;
+          });
+        } else {
+          setState(() {
+            done = true;
+            error = e;
+          });
+        }
+      }
+
+      return;
+    }
 
     final cli = RoomClient(
-      protocol: Protocol(channel: WebSocketProtocolChannel(url: connection!.roomUrl, jwt: connection!.jwt)),
-      oauthTokenRequestHandler:
-          widget.oauthTokenRequestHandler == null ? null : (request) => widget.oauthTokenRequestHandler!(client!, request),
+      protocol: Protocol(
+        channel: WebSocketProtocolChannel(url: connection!.roomUrl, jwt: connection!.jwt),
+      ),
+      oauthTokenRequestHandler: widget.oauthTokenRequestHandler == null
+          ? null
+          : (request) => widget.oauthTokenRequestHandler!(client!, request),
     );
 
     if (mounted) {
@@ -130,6 +159,14 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
   @override
   Widget build(BuildContext context) {
+    if (notFound) {
+      if (widget.notFoundBuilder != null) {
+        return widget.notFoundBuilder!(context);
+      } else {
+        return Text("Room Not Found");
+      }
+    }
+
     if (!done) {
       if (client == null) {
         if (widget.authorizingBuilder != null) {
@@ -167,6 +204,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
           return Text("Room Closed");
         }
       }
+
       return widget.doneBuilder!(context, error);
     }
   }
