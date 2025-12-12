@@ -1,0 +1,24 @@
+name: meshagent_flutter_example
+description: Example Flutter app demonstrating how to connect to a Meshagent room.
+version: 0.11.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.0
+  flutter: ^3.24.0
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meshagent: ^0.11.0
+  meshagent_flutter:
+    path: ..
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

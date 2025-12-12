@@ -1,0 +1,16 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.pub-cache/
+build/
+coverage/
+
+# IntelliJ related
+*.iml
+.idea/
+
+# Visual Studio Code related
+.vscode/
+
+# macOS
+.DS_Store

@@ -1,5 +1,5 @@
 name: meshagent_flutter
-description: widgets for bootstrapping meshagent projects
+description: "Widgets for bootstraping Meshagent Flutter apps: secure room sync, live documents, and messaging in a ready-to-use SDK."
 homepage: https://www.meshagent.com
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
