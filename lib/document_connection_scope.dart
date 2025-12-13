@@ -1,12 +1,14 @@
 import 'dart:math';
-import 'package:meshagent/room_server_client.dart';
+import 'package:meshagent/meshagent.dart';
 import 'package:flutter/widgets.dart';
 
 class DocumentConnectionScope extends StatefulWidget {
-  const DocumentConnectionScope({super.key, required this.room, required this.path, required this.builder});
+  const DocumentConnectionScope({super.key, required this.room, required this.path, required this.builder, this.schema, this.initialJson});
 
   final RoomClient room;
   final String path;
+  final MeshSchema? schema;
+  final Map<String, dynamic>? initialJson;
 
   final Widget Function(BuildContext context, MeshDocument? document, Object? error) builder;
 
@@ -43,7 +45,7 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
 
   Future<void> syncDocument() async {
     try {
-      final doc = await widget.room.sync.open(widget.path);
+      final doc = await widget.room.sync.open(widget.path, initialJson: widget.initialJson, schema: widget.schema);
 
       if (mounted) {
         setState(() {
