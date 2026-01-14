@@ -49,6 +49,7 @@ class RoomConnectionScope extends StatefulWidget {
     this.onReady,
     this.enableMessaging = true,
     this.oauthTokenRequestHandler,
+    this.secretRequestHandler,
     this.client,
   });
 
@@ -56,6 +57,7 @@ class RoomConnectionScope extends StatefulWidget {
 
   final bool enableMessaging;
   final Function(RoomClient, OAuthTokenRequest)? oauthTokenRequestHandler;
+  final Function(RoomClient, SecretRequest)? secretRequestHandler;
 
   final Future<RoomConnectionInfo> Function() authorization;
   final void Function(RoomClient room)? onReady;
@@ -115,6 +117,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
       oauthTokenRequestHandler: widget.oauthTokenRequestHandler == null
           ? null
           : (request) => widget.oauthTokenRequestHandler!(client!, request),
+      secretRequestHandler: widget.secretRequestHandler == null ? null : (request) => widget.secretRequestHandler!(client!, request),
     );
 
     if (mounted) {
