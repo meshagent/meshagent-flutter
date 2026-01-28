@@ -1,6 +1,6 @@
 name: meshagent_flutter_example
 description: Example Flutter app demonstrating how to connect to a Meshagent room.
-version: 0.24.4
+version: 0.24.5
 publish_to: 'none'
 
 environment:
@@ -12,7 +12,7 @@ resolution: workspace
 dependencies:
   flutter:
     sdk: flutter
-  meshagent: ^0.24.4
+  meshagent: ^0.24.5
   meshagent_flutter:
     path: ..
 
