@@ -13,7 +13,7 @@ class LivekitClient {
   RoomClient room;
 
   Future<LivekitConnectionInfo> getConnectionInfo({String? breakoutRoom}) async {
-    final response = (await room.sendRequest("livekit.connect", {"breakout_room": breakoutRoom}) as JsonChunk).json;
+    final response = (await room.sendRequest("livekit.connect", {"breakout_room": breakoutRoom}) as JsonContent).json;
 
     return LivekitConnectionInfo(token: response["token"], url: response["url"]);
   }
