@@ -1,3 +1,14 @@
+## [0.28.1]
+- Stability
+
+## [0.28.0]
+- BREAKING: ToolOutput was renamed to ToolCallOutput, ContentTool.execute now returns ToolCallOutput, and AgentsClient.toolCallResponseContents was removed.
+- Tool-call streaming now uses ControlContent close status codes/messages with RoomServerException.statusCode; InvalidToolDataException signals validation failures and closes streams with status 1007.
+- Flutter chat UI now reads thread status text/mode attributes, supports steerable threads (sends "steer" messages), and exposes cancel while processing.
+
+## [0.28.0]
+- Stability
+
 ## [0.27.2]
 - Stability
 
@@ -174,7 +185,7 @@
 - Updated the web Luau runtime asset hosting path to use versioned artifacts (`.../luau/0.15.0/`).
 
 ## [0.14.0]
-- Breaking change: `AgentsClient.ask` now accepts optional attachment bytes and returns a `Response` (`TextResponse`/`JsonResponse`) instead of a raw `Map`
+- Breaking change: `AgentsClient.ask` now accepts optional attachment bytes and returns a `Response` (`TextChunk`/`JsonChunk`) instead of a raw `Map`
 - Agent descriptions now surface `annotations` metadata for capability hints (e.g., attachment format)
 - Breaking change: `MeshDocument.encode()` now returns raw JSON instead of base64-encoded JSON
 - Luau/Flutter widgets can now create tar attachments from in-app file picks and pass them through `agents.ask`, plus expose a `LuauConsoleScope` for console output
