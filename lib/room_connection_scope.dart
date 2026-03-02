@@ -126,13 +126,22 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
       });
     }
 
-    await cli.start(onDone: onDone, onError: onError);
+    try {
+      await cli.start(onDone: onDone, onError: onError);
 
-    if (widget.enableMessaging) {
-      await cli.messaging.enable();
+      if (widget.enableMessaging) {
+        await cli.messaging.enable();
+      }
+
+      widget.onReady?.call(cli);
+    } catch (e) {
+      if (mounted && !done) {
+        setState(() {
+          done = true;
+          error = e;
+        });
+      }
     }
-
-    widget.onReady?.call(cli);
   }
 
   void onDone() {
@@ -143,11 +152,11 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
     }
   }
 
-  void onError(Object? error) {
+  void onError(Object? err) {
     if (mounted && !done) {
       setState(() {
         done = true;
-        error = error;
+        error = err;
       });
     }
   }
@@ -184,18 +193,26 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
         return FutureBuilder(
           future: client!.ready,
           builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return widget.builder(context, client!);
-            } else {
+            if (snapshot.hasError) {
+              if (widget.doneBuilder != null) {
+                return widget.doneBuilder!(context, snapshot.error);
+              }
+
+              return Text("Room Disconnected: ${snapshot.error}");
+            }
+
+            if (snapshot.connectionState != ConnectionState.done) {
               if (widget.connectingBuilder == null) {
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Connecting to room...")],
                 );
-              } else {
-                return widget.connectingBuilder!(context, client!);
               }
+
+              return widget.connectingBuilder!(context, client!);
             }
+
+            return widget.builder(context, client!);
           },
         );
       }
