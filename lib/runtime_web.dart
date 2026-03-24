@@ -5,8 +5,11 @@ import "package:logging/logging.dart";
 import 'package:meshagent/document.dart';
 import 'package:meshagent/runtime.dart';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart' as web;
+
+const _runtimeScriptElementId = 'meshagent-flutter-runtime-entrypoint';
 
 @JS("meshagent.registerDocument")
 external void _runtimeRegisterDocument(
@@ -36,7 +39,13 @@ class DocumentRuntimeImpl extends DocumentRuntime {
   static final _entrypointCode = rootBundle.loadString("packages/meshagent_flutter/js/entrypoint.txt", cache: false);
 
   static final _init = (() async {
-    final element = web.document.createElement("script")..innerHTML = (await _entrypointCode).toJS;
+    if (globalContext['meshagent'] != null || web.document.getElementById(_runtimeScriptElementId) != null) {
+      return;
+    }
+
+    final element = web.document.createElement("script") as web.HTMLScriptElement
+      ..id = _runtimeScriptElementId
+      ..innerHTML = (await _entrypointCode).toJS;
 
     web.document.body!.appendChild(element);
   }());
