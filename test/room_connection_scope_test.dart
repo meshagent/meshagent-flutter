@@ -111,4 +111,65 @@ void main() {
 
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets('shows retryingBuilder between retryable attempts', (tester) async {
+    final pairs = <_ProtocolPair>[];
+    var clientCount = 0;
+
+    addTearDown(() {
+      for (final pair in pairs) {
+        unawaited(pair.dispose());
+      }
+    });
+
+    RoomClient makeClient(RoomConnectionInfo connectionInfo) {
+      final pair = _ProtocolPair();
+      pairs.add(pair);
+      clientCount++;
+
+      if (clientCount == 1) {
+        unawaited(pair.closeServerToClient());
+      } else {
+        pair.serverProtocol.start(onMessage: (protocol, messageId, type, data) async {});
+        unawaited(_sendRoomReady(pair.serverProtocol));
+      }
+
+      return RoomClient(protocol: pair.clientProtocol);
+    }
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: RoomConnectionScope(
+          enableMessaging: false,
+          authorization: () async => RoomConnectionInfo(
+            projectId: 'project-1',
+            roomName: 'test-room',
+            roomUrl: Uri.parse('ws://example.test/rooms/test-room'),
+            jwt: 'token',
+          ),
+          roomClientFactory: makeClient,
+          retryingBuilder: (context, error) => const Text('waiting to retry'),
+          builder: (context, room) {
+            return const Text('connected');
+          },
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('waiting to retry'), findsOneWidget);
+
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (find.text('connected').evaluate().isEmpty) {
+      if (DateTime.now().isAfter(deadline)) {
+        fail('RoomConnectionScope did not reconnect before timeout');
+      }
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    await tester.pumpWidget(const SizedBox());
+  });
 }

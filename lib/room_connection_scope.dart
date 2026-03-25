@@ -47,6 +47,7 @@ class RoomConnectionScope extends StatefulWidget {
     required this.builder,
     this.doneBuilder,
     this.authorizingBuilder,
+    this.retryingBuilder,
     this.notFoundBuilder,
     this.connectingBuilder,
     this.onReady,
@@ -68,6 +69,7 @@ class RoomConnectionScope extends StatefulWidget {
   final void Function(RoomClient room)? onReady;
 
   final Widget Function(BuildContext context)? authorizingBuilder;
+  final Widget Function(BuildContext context, Object? error)? retryingBuilder;
   final Widget Function(BuildContext context)? notFoundBuilder;
   final Widget Function(BuildContext context, RoomClient room)? connectingBuilder;
   final Widget Function(BuildContext context, RoomClient room) builder;
@@ -87,6 +89,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   bool done = false;
   bool notFound = false;
   Object? error;
+  bool _waitingToRetry = false;
   int _connectGeneration = 0;
 
   @override
@@ -119,11 +122,13 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
           setState(() {
             notFound = true;
             error = e;
+            _waitingToRetry = false;
           });
         } else {
           setState(() {
             done = true;
             error = e;
+            _waitingToRetry = false;
           });
         }
 
@@ -149,6 +154,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
           client = cli;
           notFound = false;
           error = null;
+          _waitingToRetry = false;
         });
       }
 
@@ -191,6 +197,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
           setState(() {
             done = true;
             error = e;
+            _waitingToRetry = false;
           });
           return;
         }
@@ -201,9 +208,16 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
         setState(() {
           client = null;
           error = e;
+          _waitingToRetry = true;
         });
 
         await Future.delayed(delay);
+
+        if (mounted && !done && generation == _connectGeneration) {
+          setState(() {
+            _waitingToRetry = false;
+          });
+        }
       }
     }
   }
@@ -255,6 +269,17 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
     if (!done) {
       if (client == null) {
+        if (_waitingToRetry) {
+          if (widget.retryingBuilder != null) {
+            return widget.retryingBuilder!(context, error);
+          } else {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Waiting to retry...")],
+            );
+          }
+        }
+
         if (widget.authorizingBuilder != null) {
           return widget.authorizingBuilder!(context);
         } else {
