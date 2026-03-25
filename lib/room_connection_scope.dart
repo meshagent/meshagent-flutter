@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:meshagent_flutter/meshagent_flutter.dart';
 import 'package:meshagent/meshagent.dart';
@@ -51,6 +54,7 @@ class RoomConnectionScope extends StatefulWidget {
     this.oauthTokenRequestHandler,
     this.secretRequestHandler,
     this.client,
+    this.roomClientFactory,
   });
 
   final String? client;
@@ -58,6 +62,7 @@ class RoomConnectionScope extends StatefulWidget {
   final bool enableMessaging;
   final Function(RoomClient, OAuthTokenRequest)? oauthTokenRequestHandler;
   final Function(RoomClient, SecretRequest)? secretRequestHandler;
+  final RoomClient Function(RoomConnectionInfo connectionInfo)? roomClientFactory;
 
   final Future<RoomConnectionInfo> Function() authorization;
   final void Function(RoomClient room)? onReady;
@@ -73,12 +78,16 @@ class RoomConnectionScope extends StatefulWidget {
 }
 
 class _RoomConnectionScopeState extends State<RoomConnectionScope> {
+  static const int _retryBaseDelayMs = 500;
+  static const int _retryMaxDelayMs = 30000;
+
   RoomClient? client;
   RoomConnectionInfo? connection;
 
   bool done = false;
   bool notFound = false;
   Object? error;
+  int _connectGeneration = 0;
 
   @override
   void initState() {
@@ -86,14 +95,26 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
       initializeFlutterDocumenRuntime();
     }
     super.initState();
-    connect();
+    unawaited(connect());
   }
 
   Future<void> connect() async {
-    try {
-      connection = await widget.authorization();
-    } catch (e) {
-      if (mounted) {
+    final generation = ++_connectGeneration;
+    var retryCount = 0;
+
+    while (mounted && !done && generation == _connectGeneration) {
+      try {
+        final nextConnection = await widget.authorization();
+        if (!mounted || generation != _connectGeneration) {
+          return;
+        }
+
+        connection = nextConnection;
+      } catch (e) {
+        if (!mounted || generation != _connectGeneration) {
+          return;
+        }
+
         if (e is NotFoundException) {
           setState(() {
             notFound = true;
@@ -105,43 +126,95 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
             error = e;
           });
         }
+
+        return;
       }
 
-      return;
-    }
+      final cli =
+          widget.roomClientFactory?.call(connection!) ??
+          RoomClient(
+            protocol: Protocol(
+              channel: WebSocketProtocolChannel(url: connection!.roomUrl, jwt: connection!.jwt),
+            ),
+            oauthTokenRequestHandler: widget.oauthTokenRequestHandler == null
+                ? null
+                : (request) => widget.oauthTokenRequestHandler!(client!, request),
+            secretRequestHandler: widget.secretRequestHandler == null ? null : (request) => widget.secretRequestHandler!(client!, request),
+          );
 
-    final cli = RoomClient(
-      protocol: Protocol(
-        channel: WebSocketProtocolChannel(url: connection!.roomUrl, jwt: connection!.jwt),
-      ),
-      oauthTokenRequestHandler: widget.oauthTokenRequestHandler == null
-          ? null
-          : (request) => widget.oauthTokenRequestHandler!(client!, request),
-      secretRequestHandler: widget.secretRequestHandler == null ? null : (request) => widget.secretRequestHandler!(client!, request),
-    );
+      var connectionEstablished = false;
 
-    if (mounted) {
-      setState(() {
-        client = cli;
-      });
-    }
-
-    try {
-      await cli.start(onDone: onDone, onError: onError);
-
-      if (widget.enableMessaging) {
-        await cli.messaging.enable();
-      }
-
-      widget.onReady?.call(cli);
-    } catch (e) {
-      if (mounted && !done) {
+      if (mounted && generation == _connectGeneration) {
         setState(() {
-          done = true;
-          error = e;
+          client = cli;
+          notFound = false;
+          error = null;
         });
       }
+
+      try {
+        await cli.start(
+          onDone: () {
+            if (!connectionEstablished) {
+              return;
+            }
+            onDone();
+          },
+          onError: (err) {
+            if (!connectionEstablished) {
+              return;
+            }
+            onError(err);
+          },
+        );
+
+        if (widget.enableMessaging) {
+          await cli.messaging.enable();
+        }
+
+        if (!mounted || generation != _connectGeneration) {
+          cli.dispose();
+          return;
+        }
+
+        connectionEstablished = true;
+        widget.onReady?.call(cli);
+        return;
+      } catch (e) {
+        cli.dispose();
+
+        if (!mounted || generation != _connectGeneration) {
+          return;
+        }
+
+        if (!_isRetryableConnectionError(e)) {
+          setState(() {
+            done = true;
+            error = e;
+          });
+          return;
+        }
+
+        final delay = _getRetryDelay(retryCount);
+        retryCount++;
+
+        setState(() {
+          client = null;
+          error = e;
+        });
+
+        await Future.delayed(delay);
+      }
     }
+  }
+
+  Duration _getRetryDelay(int retryCount) {
+    final multiplier = math.pow(2, retryCount).toInt();
+    return Duration(milliseconds: math.min(_retryMaxDelayMs, _retryBaseDelayMs * multiplier));
+  }
+
+  bool _isRetryableConnectionError(Object error) {
+    return error is RoomServerException && error.retryable;
   }
 
   void onDone() {
@@ -163,10 +236,11 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
   @override
   void dispose() {
-    super.dispose();
-
+    _connectGeneration++;
     done = true;
     client?.dispose();
+
+    super.dispose();
   }
 
   @override
