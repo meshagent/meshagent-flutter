@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:meshagent/agent.dart';
 import 'package:meshagent/room_server_client.dart';
 import 'package:flutter/widgets.dart';
@@ -7,7 +9,7 @@ class ClientToolkits extends StatefulWidget {
 
   final RoomClient room;
   final bool public;
-  final List<RemoteToolkit> toolkits;
+  final List<Toolkit> toolkits;
 
   final Widget child;
 
@@ -16,21 +18,47 @@ class ClientToolkits extends StatefulWidget {
 }
 
 class _ClientToolkitsState extends State<ClientToolkits> {
+  final List<HostedToolkit> _hostedToolkits = <HostedToolkit>[];
+  bool _disposed = false;
+
   @override
   void initState() {
     super.initState();
+    unawaited(_startToolkits());
+  }
 
-    for (final toolkit in widget.toolkits) {
-      toolkit.start(public: widget.public);
+  Future<void> _startToolkits() async {
+    try {
+      for (final toolkit in widget.toolkits) {
+        final hostedToolkit = await startHostedToolkit(room: widget.room, toolkit: toolkit, public: widget.public);
+        if (_disposed) {
+          await hostedToolkit.stop();
+          continue;
+        }
+        _hostedToolkits.add(hostedToolkit);
+      }
+    } catch (error, stackTrace) {
+      for (final toolkit in _hostedToolkits) {
+        await toolkit.stop();
+      }
+      _hostedToolkits.clear();
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'meshagent_flutter',
+          context: ErrorDescription('while starting hosted toolkits'),
+        ),
+      );
     }
   }
 
   @override
   void dispose() {
-    for (final toolkit in widget.toolkits) {
-      toolkit.stop();
+    _disposed = true;
+    for (final toolkit in _hostedToolkits) {
+      unawaited(toolkit.stop());
     }
-
     super.dispose();
   }
 
