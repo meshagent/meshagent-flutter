@@ -8,9 +8,6 @@ import 'package:meshagent_flutter/meshagent_flutter.dart';
 
 class _ProtocolPair {
   _ProtocolPair() {
-    clientProtocol = Protocol(
-      channel: StreamProtocolChannel(input: _serverToClient.stream, output: _clientToServer.sink),
-    );
     serverProtocol = Protocol(
       channel: StreamProtocolChannel(input: _clientToServer.stream, output: _serverToClient.sink),
     );
@@ -18,17 +15,39 @@ class _ProtocolPair {
 
   final _clientToServer = StreamController<Uint8List>();
   final _serverToClient = StreamController<Uint8List>();
-  late final Protocol clientProtocol;
+  Protocol? _clientProtocol;
   late final Protocol serverProtocol;
+
+  Protocol get clientProtocol {
+    final protocol = _clientProtocol;
+    if (protocol == null) {
+      throw StateError('client protocol has not been created');
+    }
+    return protocol;
+  }
+
+  Protocol clientProtocolFactory() {
+    if (_clientProtocol != null) {
+      throw ProtocolReconnectUnsupportedException('protocolFactory was not configured for reconnecting this protocol');
+    }
+    final protocol = Protocol(
+      channel: StreamProtocolChannel(input: _serverToClient.stream, output: _clientToServer.sink),
+    );
+    _clientProtocol = protocol;
+    return protocol;
+  }
 
   Future<void> closeServerToClient() async {
     await _serverToClient.close();
   }
 
   Future<void> dispose() async {
-    try {
-      clientProtocol.dispose();
-    } catch (_) {}
+    final clientProtocol = _clientProtocol;
+    if (clientProtocol != null) {
+      try {
+        clientProtocol.dispose();
+      } catch (_) {}
+    }
     try {
       serverProtocol.dispose();
     } catch (_) {}
@@ -43,6 +62,14 @@ Future<void> _sendRoomReady(Protocol protocol) async {
   await protocol.send(
     'room_ready',
     packMessage({'room_name': 'test-room', 'room_url': 'ws://example/rooms/test-room', 'session_id': 'session-1'}),
+  );
+  await protocol.send(
+    'connected',
+    packMessage({
+      'type': 'init',
+      'participantId': 'self',
+      'attributes': {'name': 'self'},
+    }),
   );
 }
 
@@ -70,7 +97,7 @@ void main() {
         unawaited(_sendRoomReady(pair.serverProtocol));
       }
 
-      return RoomClient(protocol: pair.clientProtocol);
+      return RoomClient(protocolFactory: pair.clientProtocolFactory);
     }
 
     await tester.pumpWidget(
@@ -134,7 +161,7 @@ void main() {
         unawaited(_sendRoomReady(pair.serverProtocol));
       }
 
-      return RoomClient(protocol: pair.clientProtocol);
+      return RoomClient(protocolFactory: pair.clientProtocolFactory);
     }
 
     await tester.pumpWidget(

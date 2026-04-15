@@ -138,9 +138,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
       final cli =
           widget.roomClientFactory?.call(connection!) ??
           RoomClient(
-            protocol: Protocol(
-              channel: WebSocketProtocolChannel(url: connection!.roomUrl, jwt: connection!.jwt),
-            ),
+            protocolFactory: WebSocketClientProtocol.createFactory(url: connection!.roomUrl, token: connection!.jwt),
             oauthTokenRequestHandler: widget.oauthTokenRequestHandler == null
                 ? null
                 : (request) => widget.oauthTokenRequestHandler!(client!, request),

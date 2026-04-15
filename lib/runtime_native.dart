@@ -120,6 +120,24 @@ class DocumentRuntimeImpl extends DocumentRuntime {
   void applyBackendChanges({required String documentId, required String base64}) {
     _jsRuntime.executeSafe("meshagent.applyBackendChanges(${jsonEncode(documentId)},${jsonEncode(base64)})");
   }
+
+  @override
+  String getState({required String documentId, String? vectorBase64}) {
+    final result = _jsRuntime.executeSafe("meshagent.getState(${jsonEncode(documentId)},${jsonEncode(vectorBase64)})");
+    if (result is! String) {
+      throw Exception('meshagent.getState returned an unexpected value');
+    }
+    return result;
+  }
+
+  @override
+  String getStateVector({required String documentId}) {
+    final result = _jsRuntime.executeSafe("meshagent.getStateVector(${jsonEncode(documentId)})");
+    if (result is! String) {
+      throw Exception('meshagent.getStateVector returned an unexpected value');
+    }
+    return result;
+  }
 }
 
 extension _Execute on JavascriptRuntime {

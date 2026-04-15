@@ -27,4 +27,14 @@ class DocumentRuntimeImpl extends DocumentRuntime {
   void applyBackendChanges({required String documentId, required String base64}) {
     throw Exception("Not implemented");
   }
+
+  @override
+  String getState({required String documentId, String? vectorBase64}) {
+    throw Exception("Not implemented");
+  }
+
+  @override
+  String getStateVector({required String documentId}) {
+    throw Exception("Not implemented");
+  }
 }

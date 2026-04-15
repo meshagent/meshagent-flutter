@@ -29,6 +29,12 @@ external void _runtimeApplyChanges(JSObject changes);
 @JS("meshagent.applyBackendChanges")
 external void _runtimeApplyBackendChanges(JSString documentID, JSString base64);
 
+@JS("meshagent.getState")
+external JSString _runtimeGetState(JSString documentID, JSString? vectorBase64);
+
+@JS("meshagent.getStateVector")
+external JSString _runtimeGetStateVector(JSString documentID);
+
 Future<void> initializeDocumentRuntime() async {
   await DocumentRuntimeImpl._init;
 }
@@ -105,5 +111,15 @@ class DocumentRuntimeImpl extends DocumentRuntime {
   @override
   void applyBackendChanges({required String documentId, required String base64}) {
     _runtimeApplyBackendChanges(documentId.toJS, base64.toJS);
+  }
+
+  @override
+  String getState({required String documentId, String? vectorBase64}) {
+    return _runtimeGetState(documentId.toJS, vectorBase64?.toJS).toDart;
+  }
+
+  @override
+  String getStateVector({required String documentId}) {
+    return _runtimeGetStateVector(documentId.toJS).toDart;
   }
 }
