@@ -112,7 +112,6 @@ class _DocumentConnectionScope extends State<DocumentConnectionScope> {
   @override
   void initState() {
     super.initState();
-
     _startSync();
   }
 
