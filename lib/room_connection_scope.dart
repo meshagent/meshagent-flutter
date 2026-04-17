@@ -90,6 +90,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   bool notFound = false;
   Object? error;
   bool _waitingToRetry = false;
+  bool _clientReady = false;
   int _connectGeneration = 0;
 
   @override
@@ -120,12 +121,16 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
         if (e is NotFoundException) {
           setState(() {
+            client = null;
+            _clientReady = false;
             notFound = true;
             error = e;
             _waitingToRetry = false;
           });
         } else {
           setState(() {
+            client = null;
+            _clientReady = false;
             done = true;
             error = e;
             _waitingToRetry = false;
@@ -150,6 +155,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
       if (mounted && generation == _connectGeneration) {
         setState(() {
           client = cli;
+          _clientReady = false;
           notFound = false;
           error = null;
           _waitingToRetry = false;
@@ -181,6 +187,9 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
           return;
         }
 
+        setState(() {
+          _clientReady = true;
+        });
         connectionEstablished = true;
         widget.onReady?.call(cli);
         return;
@@ -193,6 +202,8 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
         if (!_isRetryableConnectionError(e)) {
           setState(() {
+            client = null;
+            _clientReady = false;
             done = true;
             error = e;
             _waitingToRetry = false;
@@ -205,6 +216,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
 
         setState(() {
           client = null;
+          _clientReady = false;
           error = e;
           _waitingToRetry = true;
         });
@@ -233,6 +245,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
     if (mounted && !done) {
       setState(() {
         done = true;
+        _clientReady = false;
       });
     }
   }
@@ -242,6 +255,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
       setState(() {
         done = true;
         error = err;
+        _clientReady = false;
       });
     }
   }
@@ -250,6 +264,7 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
   void dispose() {
     _connectGeneration++;
     done = true;
+    _clientReady = false;
     client?.dispose();
 
     super.dispose();
@@ -287,31 +302,18 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
           );
         }
       } else {
-        return FutureBuilder(
-          future: client!.ready,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              if (widget.doneBuilder != null) {
-                return widget.doneBuilder!(context, snapshot.error);
-              }
+        if (!_clientReady) {
+          if (widget.connectingBuilder == null) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Connecting to room...")],
+            );
+          }
 
-              return Text("Room Disconnected: ${snapshot.error}");
-            }
+          return widget.connectingBuilder!(context, client!);
+        }
 
-            if (snapshot.connectionState != ConnectionState.done) {
-              if (widget.connectingBuilder == null) {
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Connecting to room...")],
-                );
-              }
-
-              return widget.connectingBuilder!(context, client!);
-            }
-
-            return widget.builder(context, client!);
-          },
-        );
+        return widget.builder(context, client!);
       }
     } else {
       if (widget.doneBuilder == null) {

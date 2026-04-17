@@ -6,98 +6,61 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meshagent/meshagent.dart';
 import 'package:meshagent_flutter/meshagent_flutter.dart';
 
-class _ProtocolPair {
-  _ProtocolPair() {
-    serverProtocol = Protocol(
-      channel: StreamProtocolChannel(input: _clientToServer.stream, output: _serverToClient.sink),
-    );
-  }
+class _IdleProtocolChannel extends ProtocolChannel {
+  @override
+  void start(void Function(Uint8List data) onDataReceived, {void Function()? onDone, void Function(Object? error)? onError}) {}
 
-  final _clientToServer = StreamController<Uint8List>();
-  final _serverToClient = StreamController<Uint8List>();
-  Protocol? _clientProtocol;
-  late final Protocol serverProtocol;
+  @override
+  void dispose() {}
 
-  Protocol get clientProtocol {
-    final protocol = _clientProtocol;
-    if (protocol == null) {
-      throw StateError('client protocol has not been created');
-    }
-    return protocol;
-  }
-
-  Protocol clientProtocolFactory() {
-    if (_clientProtocol != null) {
-      throw ProtocolReconnectUnsupportedException('protocolFactory was not configured for reconnecting this protocol');
-    }
-    final protocol = Protocol(
-      channel: StreamProtocolChannel(input: _serverToClient.stream, output: _clientToServer.sink),
-    );
-    _clientProtocol = protocol;
-    return protocol;
-  }
-
-  Future<void> closeServerToClient() async {
-    await _serverToClient.close();
-  }
-
-  Future<void> dispose() async {
-    final clientProtocol = _clientProtocol;
-    if (clientProtocol != null) {
-      try {
-        clientProtocol.dispose();
-      } catch (_) {}
-    }
-    try {
-      serverProtocol.dispose();
-    } catch (_) {}
-    await _clientToServer.close();
-    if (!_serverToClient.isClosed) {
-      await _serverToClient.close();
-    }
-  }
+  @override
+  Future<void> sendData(Uint8List data) async {}
 }
 
-Future<void> _sendRoomReady(Protocol protocol) async {
-  await protocol.send(
-    'room_ready',
-    packMessage({'room_name': 'test-room', 'room_url': 'ws://example/rooms/test-room', 'session_id': 'session-1'}),
-  );
-  await protocol.send(
-    'connected',
-    packMessage({
-      'type': 'init',
-      'participantId': 'self',
-      'attributes': {'name': 'self'},
-    }),
-  );
+class _ControlledRoomClient extends RoomClient {
+  _ControlledRoomClient({required Future<void> readyFuture, required Future<void> Function() onStart})
+    : _readyFuture = readyFuture,
+      _onStart = onStart,
+      super(protocolFactory: () => Protocol(channel: _IdleProtocolChannel())) {
+    unawaited(_readyFuture.catchError((Object _) {}));
+  }
+
+  final Future<void> _readyFuture;
+  final Future<void> Function() _onStart;
+
+  @override
+  Future<void> get ready {
+    return _readyFuture;
+  }
+
+  @override
+  Future<void> start({void Function()? onDone, void Function(Object? error)? onError}) async {
+    await _onStart();
+  }
+
+  @override
+  void dispose() {}
 }
 
 void main() {
   testWidgets('retries when the room is temporarily unavailable', (tester) async {
-    final pairs = <_ProtocolPair>[];
+    final retryableError = RoomServerException('temporary startup failure', retryable: true);
     var authorizationCount = 0;
     var clientCount = 0;
 
-    addTearDown(() {
-      for (final pair in pairs) {
-        unawaited(pair.dispose());
-      }
-    });
-
     RoomClient makeClient(RoomConnectionInfo connectionInfo) {
-      final pair = _ProtocolPair();
-      pairs.add(pair);
       clientCount++;
 
       if (clientCount == 1) {
-        unawaited(pair.closeServerToClient());
-      } else {
-        pair.serverProtocol.start(onMessage: (protocol, messageId, type, data) async {});
-        unawaited(_sendRoomReady(pair.serverProtocol));
+        return _ControlledRoomClient(
+          readyFuture: Future<void>.value(),
+          onStart: () async {
+            throw retryableError;
+          },
+        );
       }
 
-      return RoomClient(protocolFactory: pair.clientProtocolFactory);
+      return _ControlledRoomClient(readyFuture: Future<void>.value(), onStart: () async {});
     }
 
     await tester.pumpWidget(
@@ -140,28 +103,22 @@ void main() {
   });
 
   testWidgets('shows retryingBuilder between retryable attempts', (tester) async {
-    final pairs = <_ProtocolPair>[];
+    final retryableError = RoomServerException('temporary startup failure', retryable: true);
     var clientCount = 0;
 
-    addTearDown(() {
-      for (final pair in pairs) {
-        unawaited(pair.dispose());
-      }
-    });
-
     RoomClient makeClient(RoomConnectionInfo connectionInfo) {
-      final pair = _ProtocolPair();
-      pairs.add(pair);
       clientCount++;
 
       if (clientCount == 1) {
-        unawaited(pair.closeServerToClient());
-      } else {
-        pair.serverProtocol.start(onMessage: (protocol, messageId, type, data) async {});
-        unawaited(_sendRoomReady(pair.serverProtocol));
+        return _ControlledRoomClient(
+          readyFuture: Future<void>.value(),
+          onStart: () async {
+            throw retryableError;
+          },
+        );
       }
 
-      return RoomClient(protocolFactory: pair.clientProtocolFactory);
+      return _ControlledRoomClient(readyFuture: Future<void>.value(), onStart: () async {});
     }
 
     await tester.pumpWidget(
@@ -198,5 +155,67 @@ void main() {
     }
 
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('does not show doneBuilder while a retryable startup failure is still transitioning into retry', (tester) async {
+    final retryableError = RoomServerException('temporary startup failure', retryable: true);
+    final firstReady = Completer<void>();
+    final releaseFirstStart = Completer<void>();
+    var clientCount = 0;
+
+    RoomClient makeClient(RoomConnectionInfo connectionInfo) {
+      clientCount++;
+      if (clientCount == 1) {
+        return _ControlledRoomClient(
+          readyFuture: firstReady.future,
+          onStart: () async {
+            await releaseFirstStart.future;
+            throw retryableError;
+          },
+        );
+      }
+
+      return _ControlledRoomClient(readyFuture: Future<void>.value(), onStart: () async {});
+    }
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: RoomConnectionScope(
+          enableMessaging: false,
+          authorization: () async => RoomConnectionInfo(
+            projectId: 'project-1',
+            roomName: 'test-room',
+            roomUrl: Uri.parse('ws://example.test/rooms/test-room'),
+            jwt: 'token',
+          ),
+          roomClientFactory: makeClient,
+          connectingBuilder: (context, room) => const Text('connecting'),
+          retryingBuilder: (context, error) => const Text('waiting to retry'),
+          doneBuilder: (context, error) => const Text('done'),
+          builder: (context, room) => const Text('connected'),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(find.text('connecting'), findsOneWidget);
+
+    firstReady.completeError(retryableError);
+    await tester.pump();
+
+    expect(find.text('done'), findsNothing);
+    expect(find.text('connecting'), findsOneWidget);
+
+    releaseFirstStart.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('waiting to retry'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(find.text('connected'), findsOneWidget);
   });
 }
