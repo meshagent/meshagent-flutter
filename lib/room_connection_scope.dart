@@ -52,8 +52,6 @@ class RoomConnectionScope extends StatefulWidget {
     this.connectingBuilder,
     this.onReady,
     this.enableMessaging = true,
-    this.oauthTokenRequestHandler,
-    this.secretRequestHandler,
     this.client,
     this.roomClientFactory,
   });
@@ -61,8 +59,6 @@ class RoomConnectionScope extends StatefulWidget {
   final String? client;
 
   final bool enableMessaging;
-  final Function(RoomClient, OAuthTokenRequest)? oauthTokenRequestHandler;
-  final Function(RoomClient, SecretRequest)? secretRequestHandler;
   final RoomClient Function(RoomConnectionInfo connectionInfo)? roomClientFactory;
 
   final Future<RoomConnectionInfo> Function() authorization;
@@ -144,10 +140,6 @@ class _RoomConnectionScopeState extends State<RoomConnectionScope> {
           widget.roomClientFactory?.call(connection!) ??
           RoomClient(
             protocolFactory: WebSocketClientProtocol.createFactory(url: connection!.roomUrl, token: connection!.jwt),
-            oauthTokenRequestHandler: widget.oauthTokenRequestHandler == null
-                ? null
-                : (request) => widget.oauthTokenRequestHandler!(client!, request),
-            secretRequestHandler: widget.secretRequestHandler == null ? null : (request) => widget.secretRequestHandler!(client!, request),
           );
 
       var connectionEstablished = false;
