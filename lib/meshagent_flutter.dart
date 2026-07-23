@@ -4,3 +4,4 @@ export 'room_participants_builder.dart';
 export 'client_toolkits.dart';
 export 'runtime.dart';
 export 'livekit_client.dart';
+export 'tool_call_rendering.dart';
